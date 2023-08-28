@@ -5,11 +5,13 @@ import pygame
 from pygame.locals import *
 import os
 
-# Pyqueex 0.1
+# Pyqueex 0.2
 # License: GNU GPL 3.
 
 BLACK = (0, 0, 0)
 RED   = (200, 0, 0)
+GREEN = (0, 200, 0)
+BLUE   = (0, 0, 200)
 WHITE = (200, 200, 200)
 TRANSPARENT = (0, 0, 0, 0)
 
@@ -51,6 +53,7 @@ class Line:
     def setPosition(self, spos_x, spos_y):
         self.rect.topleft = (spos_x * SCALEFACTOR, spos_y * SCALEFACTOR)
 
+
 class Playfield:
 
     def __init__(self, env):
@@ -63,21 +66,55 @@ class Playfield:
             row = []
             for x in range(self.env.s_x):
                 if y == 0 or y == self.env.s_y - 1:
-                    row.append(1)
+                    row.append(7)
                 else:
                     if x == 0 or x == self.env.s_x - 1:
-                        row.append(1)
+                        row.append(7)
                     else:
                         row.append(0)
             self.playfield.append(row)
 
-    def update(self, paper):
-        rect = pygame.Rect((0, 0), (SCALEFACTOR, SCALEFACTOR))
+    def showPlayfield(self):
+        for i in self.playfield:
+            s = ""
+            for u in i:
+                s += str(u)
+            print s
+
+    def fillArea(self, opponentposition):
+        self.floodfillPlayfield(opponentposition, 0, 1)
+        self.inversePlayfield()
+
+    def floodfillPlayfield(self, coordinates, fromcolor, tocolor):
+        tofill = [coordinates]
+        while len(tofill) > 0:
+            (x, y) = tofill.pop()
+            if self.playfield[y][x] != fromcolor:
+                continue
+            self.playfield[y][x] = tocolor
+            tofill.append( (x - 1, y) )
+            tofill.append( (x + 1, y) )
+            tofill.append( (x, y - 1) )
+            tofill.append( (x, y + 1) )
+
+    def inversePlayfield(self):
         for y in range(self.env.s_y):
             for x in range(self.env.s_x):
                 if self.playfield[y][x] == 1:
+                    self.playfield[y][x] = 0
+                    continue
+                if self.playfield[y][x] == 0:
+                    self.playfield[y][x] = 1
+
+    def update(self, paper):
+        colors = {1 : BLUE, 7: WHITE}
+        ckeys  = colors.keys()
+        rect = pygame.Rect((0, 0), (SCALEFACTOR, SCALEFACTOR))
+        for y in range(self.env.s_y):
+            for x in range(self.env.s_x):
+                if self.playfield[y][x] in ckeys:
                     rect.topleft = (x * SCALEFACTOR, y * SCALEFACTOR)
-                    pygame.draw.rect(paper.surface, WHITE, rect)
+                    pygame.draw.rect(paper.surface, colors[self.playfield[y][x]], rect)
 
 
 class Player:
@@ -87,10 +124,12 @@ class Player:
         self.playfield = playfield
         self.paper = paper
         self.spos_x = self.env.s_x // 2
-        self.spos_y = self.env.s_y // 2
+        # self.spos_y = self.env.s_y // 2
+        self.spos_y = self.env.s_y - 1
         self.createSurface()
         self.getPCPosition()
         self.moved = False
+        self.collided = False
 
     def createSurface(self):
         self.surface = pygame.Surface((2 * SCALEFACTOR, 2 * SCALEFACTOR))
@@ -115,7 +154,7 @@ class Player:
             targetpos[1] -= 1
         if direction == "down":
             targetpos[1] += 1
-        if self.playfield.playfield[targetpos[1]][targetpos[0]] == 1:
+        if self.playfield.playfield[targetpos[1]][targetpos[0]] == 7:
             return True
         return False
 
@@ -124,6 +163,7 @@ class Player:
             return
 
         if self.checkCollision(direction):
+            self.collided = True
             return
 
         self.moved = True
@@ -148,8 +188,39 @@ class Player:
         print self.spos_x, self.spos_y
 
     def drawToPaper(self):
-        self.playfield.playfield[self.spos_y][self.spos_x] = 1
+        self.playfield.playfield[self.spos_y][self.spos_x] = 7
         self.paper.drawLine(self.spos_x, self.spos_y)
+
+    def draw(self, screen):
+        self.getPCPosition()
+        self.rect.topleft = (self.pcpos_x, self.pcpos_y)
+        screen.blit(self.surface, self.rect)
+
+
+class Opponent:
+
+    def __init__(self, env, playfield, paper):
+        self.env = env
+        self.playfield = playfield
+        self.paper = paper
+        self.spos_x = self.env.s_x * 3 // 4
+        self.spos_y = self.env.s_y // 4
+        self.createSurface()
+        self.getPCPosition()
+        self.moved = False
+
+    def createSurface(self):
+        self.surface = pygame.Surface((4 * SCALEFACTOR, 4 * SCALEFACTOR))
+        self.surface = self.surface.convert_alpha()
+        self.rect    = self.surface.get_rect()
+        pygame.draw.rect(self.surface, GREEN, self.rect)
+
+    def getPCPosition(self):
+        self.pcpos_x = self.spos_x * SCALEFACTOR - 0.25 * self.rect.width
+        self.pcpos_y = self.spos_y * SCALEFACTOR - 0.25 * self.rect.height
+
+    def getPosition(self):
+        return (self.spos_x, self.spos_y)
 
     def draw(self, screen):
         self.getPCPosition()
@@ -173,6 +244,7 @@ class Main:
         self.playfield = Playfield(self.env)
         self.playfield.update(self.paper)
         self.player = Player(self.env, self.playfield, self.paper)
+        self.opponent = Opponent(self.env, self.playfield, self.paper) 
         self.running = True
 
         while self.running:
@@ -193,11 +265,14 @@ class Main:
                 self.running = False
             if self.running:
                 self.screen.fill(BLACK)
-                # self.player.showPosition()
-                # self.playfield.update(self.paper)
                 self.player.drawToPaper()
+                if self.player.collided:
+                    self.playfield.fillArea(self.opponent.getPosition())
+                    self.playfield.update(self.paper)
+                    self.player.collided = False
                 self.paper.draw(self.screen)
                 self.player.draw(self.screen)
+                self.opponent.draw(self.screen)
                 pygame.display.flip()
 
 Main()
