@@ -6,6 +6,7 @@ from pygame.locals import *
 import os
 
 # Pyqueex 0.1
+# License: GNU GPL 3.
 
 BLACK = (0, 0, 0)
 RED   = (200, 0, 0)
