@@ -2,4 +2,4 @@
 
 Clone of an ancient arcade game in Pygame - not complete yet.
 
-License: GNU GPL v3.
+License: GNU GPL, version 3.
