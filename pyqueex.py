@@ -7,7 +7,7 @@ import os
 import random
 
 """
-    Pyqueex 0.5 - Clone of an ancient arcade game - not complete yet.
+    Pyqueex 0.6 - Clone of an ancient arcade game - not complete yet.
 
     Copyright (C) 2023 hlubenow
 
@@ -24,12 +24,19 @@ import random
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
+# ----------------------------------------------------------
 
-SCALEFACTOR = 6
+# Settings:
 
-SPEEDSETTING = 20
+SCALEFACTOR       = 5
+
+SPEEDSETTING      = 20
+
+LIVES             = 3
 
 WINNINGPERCENTAGE = 75
+
+# ----------------------------------------------------------
 
 COLORS = {"black"   : (0, 0, 0),
           "blue"    : (0, 0, 197),
@@ -204,6 +211,7 @@ class Player(MySprite):
         self.setPCPosition()
         self.drawing = False
         self.moved = False
+        self.line.setColor("white")
 
     def setOpponent(self, opponent):
         self.opponent = opponent
@@ -542,19 +550,29 @@ class Text(pygame.sprite.Sprite):
     def draw(self, screen):
         screen.blit(self.image, self.rect)
 
-
-class AllSpritesGroup(pygame.sprite.Group):
+class SpriteGroup(pygame.sprite.Group):
 
     def __init__(self, *args):
         pygame.sprite.Group.__init__(self, *args)
 
-    def update(self, screen, *args):
-        for s in self.sprites():
-            s.update(screen, 1)
-
     def draw(self, screen):
         for s in self.sprites():
             s.draw(screen)
+
+class LevelSpritesGroup(SpriteGroup):
+
+    def __init__(self, *args):
+        SpriteGroup.__init__(self, *args)
+
+class GameOverGroup(SpriteGroup):
+
+    def __init__(self, *args):
+        SpriteGroup.__init__(self, *args)
+
+class GameWonGroup(SpriteGroup):
+
+    def __init__(self, *args):
+        SpriteGroup.__init__(self, *args)
 
 
 class GameState:
@@ -564,7 +582,7 @@ class GameState:
 
     def initSettings(self):
         self.state = "level_1"
-        self.lifes = 3
+        self.lives = 3
 
 
 class Main:
@@ -596,18 +614,30 @@ class Main:
                 self.player.drawToPaper()
                 self.screen.fill(COLORS["black"])
                 self.paper.draw(self.screen)
-                self.allsprites.update(self.screen)
-                self.allsprites.draw(self.screen)
+                self.levelsprites.draw(self.screen)
                 pygame.display.flip()
                 continue
 
-            if self.gamestate.state == "dead":
+            if self.gamestate.state == "gameover":
+                r = self.checkForKey()
+                if r == "quit":
+                    break
+                if r == "pressed":
+                    self.initLevel()
                 self.screen.fill(COLORS["black"])
+                self.gameovergroup.draw(self.screen)
                 pygame.display.flip()
                 continue
 
             if self.gamestate.state == "won":
-                self.initLevel()
+                r = self.checkForKey()
+                if r == "quit":
+                    break
+                if r == "pressed":
+                    self.initLevel()
+                self.screen.fill(COLORS["black"])
+                self.gamewongroup.draw(self.screen)
+                pygame.display.flip()
                 continue
 
         # Main loop has finished
@@ -620,7 +650,7 @@ class Main:
         self.opponent.initSettings()
         self.siderunnersgroup.initPositions()
         self.gamestate.initSettings()
-        self.lifestext.setText(("Lives: " + str(self.gamestate.lifes),))
+        self.livestext.setText(("Lives: " + str(self.gamestate.lives),))
         self.percentage.setText((str(self.playfield.getFilledPercentage()) + "%",))
 
     def initSprites(self):
@@ -639,9 +669,14 @@ class Main:
         self.player.setOpponent(self.opponent)
         self.opponent.setPlayer(self.player)
         self.percentage = Text(("0%",), "white", (self.env.s_x * 6 // 7, self.env.s_y // 20), "Arial", 50)
-        self.lifestext = Text(("Lives: " + str(self.gamestate.lifes),), "white", (self.env.s_x // 15, self.env.s_y // 13), "Arial", 30)
-        self.allsprites = AllSpritesGroup(self.player, self.opponent, self.percentage, self.lifestext)
-        self.allsprites.add(self.siderunnersgroup)
+        self.livestext = Text(("Lives: " + str(self.gamestate.lives),), "white", (self.env.s_x // 15, self.env.s_y // 13), "Arial", 30)
+        self.levelsprites = LevelSpritesGroup(self.player, self.opponent, self.percentage, self.livestext)
+        self.levelsprites.add(self.siderunnersgroup)
+        self.gameovertext = Text(("Game Over",), "white", (self.env.s_x // 4, self.env.s_y // 4), "Arial", 30)
+        self.gamewontext = Text(("Level Completed!",), "cyan", (self.env.s_x // 4, self.env.s_y // 4), "Arial", 30)
+        self.presstext = Text(("Press any key to play again",), "magenta", (self.env.s_x // 4, self.env.s_y // 2), "Arial", 20)
+        self.gameovergroup = GameOverGroup(self.gameovertext, self.presstext)
+        self.gamewongroup = GameWonGroup(self.gamewontext, self.presstext)
 
     def checkPlayer(self):
         # When player enters dark area, switch on line drawing:
@@ -674,11 +709,11 @@ class Main:
             self.playfield.deleteYellowInPlayfield()
             # Also clears yellow line:
             self.playfield.update(self.paper)
-            self.gamestate.lifes -= 1
+            self.gamestate.lives -= 1
             self.siderunnersgroup.initPositions()
-            self.lifestext.setText(("Lives: " + str(self.gamestate.lifes),))
-            if self.gamestate.lifes == 0:
-                self.gamestate.state = "game_over"
+            self.livestext.setText(("Lives: " + str(self.gamestate.lives),))
+            if self.gamestate.lives == 0:
+                self.gamestate.state = "gameover"
 
         if res in ("blue", "white"):
             self.opponent.findNewPosition((self.player.spos_x, self.player.spos_y))
@@ -699,5 +734,21 @@ class Main:
             pygame.quit()
             self.running = False
             return "quit"
+
+    def checkForKey(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                self.running = False
+                return "quit"
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    self.running = False
+                    return "quit"
+                elif event.key in (pygame.K_LEFT, pygame.K_RIGHT, pygame.K_UP, pygame.K_DOWN):
+                    return "direction"
+                else:
+                    return "pressed"
 
 Main()
