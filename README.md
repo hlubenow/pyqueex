@@ -1,4 +1,4 @@
-### Pyqueex 0.5
+### Pyqueex 0.6
 
 Clone of an ancient arcade game in Pygame - not complete yet.
 
