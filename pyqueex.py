@@ -91,13 +91,6 @@ class Playfield:
                         row.append(COLORNRS["black"])
             self.playfield.append(row)
 
-    def printPlayfield(self):
-        for i in self.playfield:
-            s = ""
-            for u in i:
-                s += str(u)
-            print s
-
     def fillArea(self, opponentposition):
         """ To fill the wanted area, we use a flood-fill on the position,
             where the opponent is, then "inverse" the playfield, that is, fill
@@ -189,9 +182,6 @@ class MySprite(pygame.sprite.Sprite):
 
     def getPosition(self):
         return (self.spos_x, self.spos_y)
-
-    def showPosition(self):
-        print self.spos_x, self.spos_y
 
     def draw(self, screen):
         self.setPCPosition()
