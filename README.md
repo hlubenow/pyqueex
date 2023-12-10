@@ -1,7 +1,6 @@
-### Pyqueex 0.7
+### Pyqueex 1.0
 
-Clone of an ancient arcade game in Pygame - not complete yet.
-
-Version 0.7 - Complete rewrite.
+Clone of an ancient arcade game in Pygame - presentable by now.
 
 License: GNU GPL, version 3.
+Except font data (see class "VGAFont").
