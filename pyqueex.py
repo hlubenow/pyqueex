@@ -38,6 +38,9 @@ SCALEFACTOR       = 5
 WINDOWPOSITION_X  = 185
 WINDOWPOSITION_Y  = 30
 
+# Can be 0 (= no joystick), joystick number 1  or number 2:
+JOYSTICKNUMBER    = 1
+
 FPS               = 60
 
 WINNINGPERCENTAGE = 80
@@ -54,6 +57,8 @@ LINERUNNERSSPEED  = 0.05
 OPPONENTSIZE_X    = 28
 OPPONENTSIZE_Y    = 13
 OPPONENTCOLOR     = "green"
+
+LINERUNNERSMAX    = 4
 
 EXTRALIFELEVEL    = 3
 
@@ -834,8 +839,7 @@ class VGAFont:
 
 class InputHandler:
 
-    def __init__(self, hasjoystick):
-        self.hasjoystick = hasjoystick
+    def __init__(self):
 
         self.data = { pygame.K_LEFT  : "left", pygame.K_RIGHT   : "right",
                       pygame.K_UP    : "up",   pygame.K_DOWN    : "down",
@@ -847,16 +851,15 @@ class InputHandler:
         self.datavalues = self.data.values()
 
         self.joystick = {}
-        if self.hasjoystick:
+        if JOYSTICKNUMBER > 0:
             self.initJoystick()
         self.initKeys()
 
     def initJoystick(self):
         if pygame.joystick.get_count() == 0:
             print("No joysticks found.")
-            self.hasjoystick = False
             return
-        self.js = pygame.joystick.Joystick(0)
+        self.js = pygame.joystick.Joystick(JOYSTICKNUMBER - 1)
         self.js.init()
         for i in self.datavalues:
             if i == "quit":
@@ -883,7 +886,7 @@ class InputHandler:
                 for i in self.keypresses:
                     if event.key == i:
                         self.keypresses[i] = False
-            if self.hasjoystick:
+            if JOYSTICKNUMBER > 0:
                 if event.type == pygame.JOYBUTTONDOWN:
                     self.joystick["fire"] = True
                 if event.type == pygame.JOYBUTTONUP:
@@ -910,7 +913,8 @@ class InputHandler:
         for i in self.datakeys:
             if self.keypresses[i]:
                 action[self.data[i]] = True
-        if self.hasjoystick:
+
+        if JOYSTICKNUMBER > 0:
             for i in self.datavalues:
                 if i == "quit":
                     continue
@@ -930,7 +934,7 @@ class Game:
         self.screen = pygame.display.set_mode((SCREENSIZE_X * SCALEFACTOR + 2 * BORDER_X * SCALEFACTOR, SCREENSIZE_Y * SCALEFACTOR + 2 * BORDER_Y * SCALEFACTOR))
         pygame.display.set_caption("PyQueex")
         self.clock = pygame.time.Clock()
-        self.ih = InputHandler(True)
+        self.ih = InputHandler()
         self.keyaction = {}
         self.counters = {"getready"  : GETREADYTIME,
                          "completed" : COMPLETEDTIME}
@@ -983,7 +987,7 @@ class Game:
         self.texts["intro_story"] = MultilineText(("The evil green-rectangle-mutant",
                                                    "wants to kill you, his creator!",
                                                    "Try to wall it in, before it gets you,",
-                                                   "or you'll become chicken feed!"),
+                                                   "or you'll be chicken feed!"),
                                                    16,
                                                    "green",
                                                    25, 30,
@@ -1059,17 +1063,24 @@ class Game:
         self.player.initSettings()
         self.opponent.initSettings()
         # Increasing number of Siderunners from level 1 to 4:
-        if self.level >= 1 and self.level <= 4:
+        if self.level >= 1 and self.level <= LINERUNNERSMAX:
             self.addLineRunner()
         self.linerunners.initPositions()
         self.state = "getready"
 
     def addLineRunner(self):
-        s = LineRunner(self, self.linerunners.lrdata[self.level - 1][0], self.linerunners.lrdata[self.level - 1][1])
-        self.linerunners.add(s)
-        self.levelgroup.add(s)
-        self.getreadygroup.add(s)
-        self.playerexplosiongroup.add(s)
+        l = LineRunner(self, self.linerunners.lrdata[self.level - 1][0], self.linerunners.lrdata[self.level - 1][1])
+        self.linerunners.add(l)
+        self.levelgroup.add(l)
+        self.getreadygroup.add(l)
+        self.playerexplosiongroup.add(l)
+
+    def removeLinerunnersFromGroups(self):
+        for l in self.linerunners.sprites():
+            self.levelgroup.remove(l)
+            self.getreadygroup.remove(l)
+            self.playerexplosiongroup.remove(l)
+            self.linerunners.remove(l)
 
     def checkKeys(self):
         self.keyaction = self.ih.getKeyboardAndJoystickAction()
@@ -1085,6 +1096,7 @@ class Game:
             self.level        = 1
             self.player.lives = PLAYERLIVES
             self.texts["lives"].setText(str(self.player.lives))
+            self.removeLinerunnersFromGroups()
             self.initLevel()
 
     def setState(self, state, caller):
