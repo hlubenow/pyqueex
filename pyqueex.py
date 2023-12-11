@@ -58,7 +58,8 @@ OPPONENTSIZE_X    = 28
 OPPONENTSIZE_Y    = 13
 OPPONENTCOLOR     = "green"
 
-LINERUNNERSMAX    = 4
+# Up to 8:
+LINERUNNERSMAX    = 6
 
 EXTRALIFELEVEL    = 3
 
@@ -227,6 +228,7 @@ class Player(MySprite):
             self.collisions_playfield()
             if self.walldetected:
                 return
+            self.collisions_linerunners()
             self.checkPlayfield()
             self.drawToPlayfield()
             self.move()
@@ -304,6 +306,10 @@ class Player(MySprite):
         if self.playfield.playfield[self.newpos[1]][self.newpos[0]] in self.collisioncolornrs:
             self.walldetected = True
 
+    def collisions_linerunners(self):
+        if pygame.sprite.spritecollide(self, self.game.linerunners, False):
+            self.game.setState("playerdied", "player")
+
     def checkPlayfield(self):
 
         # When player enters dark area, switch on line drawing:
@@ -329,6 +335,12 @@ class Player(MySprite):
         self.line.setPosition(self.spos_x, self.spos_y)
         self.playfield.insertIntoPlayfield(self.line)
         self.game.playfieldsprite.drawLine(self.line)
+
+    def onWhiteLine(self):
+        if self.playfield.playfield[self.spos_y][self.spos_x] == COLORNRS["white"]:
+            return True
+        else:
+            return False
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
@@ -472,20 +484,21 @@ class Opponent(MySprite):
             self.direction[1] = self.boings[tochange]
 
     def collision_player(self):
-        # The whole Opponent-rectangle is checked for Player-collision.
-        # So "return" is needed, otherwise it could drain several lives
-        # from the Player at once.
+        # Collision with Player itself:
+        if self.rect.colliderect(self.player.rect):
+            # Don't kill the Player, while he's on a white line:
+            if not self.player.onWhiteLine():
+                self.game.setState("playerdied", "opponent")
+                return
+        # Collision with Player's magenta line.
+        # "return", in order not to drain more than one life from the Player:
         for y in range(OPPONENTSIZE_Y):
             for x in range(OPPONENTSIZE_X):
-                # Collision with Player itself:
-                if self.spos_x + x == self.player.spos_x and self.spos_y + y == self.player.spos_y:
-                    self.game.setState("playerdied", "opponent")
-                    return
                 # Collision with Player's magenta line:
                 if self.playfield.playfield[self.spos_y + y][self.spos_x + x] == COLORNRS["magenta"]:
                     self.game.setState("playerdied", "opponent")
                     return
- 
+
     def createImage(self):
         self.image     = pygame.Surface((OPPONENTSIZE_X * SCALEFACTOR, OPPONENTSIZE_Y * SCALEFACTOR))
         self.image     = self.image.convert()
@@ -556,7 +569,6 @@ class LineRunner(MySprite):
     def update(self):
         if self.game.state == "level":
             self.move()
-            self.collision_player()
 
     def move(self):
         change = self.getChange(LINERUNNERSSPEED)
@@ -576,9 +588,6 @@ class LineRunner(MySprite):
             self.spos_y += change
         self.setPosition()
 
-    def collision_player(self):
-        if self.spos_x == self.player.spos_x and self.spos_y == self.player.spos_y:
-            self.game.setState("playerdied", "siderunners")
 
 #####################################
 # Sprite Groups:
@@ -618,8 +627,12 @@ class LineRunnersGroup(pygame.sprite.Group):
 
     def __init__(self):
         pygame.sprite.Group.__init__(self)
-        self.lrdata = (("up", "left"), ("up", "right"),
-                       ("left", "down"), ("right", "down"))
+        self.lrdata = []
+        a = (("up", "left"), ("up", "right"),
+             ("left", "down"), ("right", "down"))
+        for i in range(2):
+            for u in a:
+                self.lrdata.append(u)
 
     def initPositions(self):
         for s in self.sprites():
@@ -1107,15 +1120,15 @@ class Game:
             self.player.initSettings()
             self.linerunners.initPositions()
 
-        # Is called either by the Opponent or a Linerunner due to collision:
+        # Is called by the Player or the Opponent due to collision:
         if self.state == "playerdied":
             self.player.lives -= 1
             # Game lost:
             if self.player.lives == 0:
                 self.state = "lost"
+                self.linerunners.initPositions()
                 self.playfield.initPlayfield()
                 self.playfieldsprite.updatePlayfieldSprite()
-                self.linerunners.initPositions()
                 return
             self.linerunners.initPositions()
             self.texts["lives"].setText(str(self.player.lives))
