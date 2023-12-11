@@ -2,7 +2,7 @@
 
 All sounds from `https://freesound.org`. Some were edited by me in Audacity:
 
-- end.wav: `[Lose_C_03](https://freesound.org/people/cabled_mess/sounds/350984/)` by cabled_mess, licensed under CC0. 
+- end.wav: `Lose_C_03` by cabled_mess, licensed under CC0. 
 
 - explosion.wav: `SupernovaSmall.wav` by Andrew Jordan, edited, licensed under [CC BY 4.0 Deed](https://creativecommons.org/licenses/by/4.0/).
 
