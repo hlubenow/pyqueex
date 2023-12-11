@@ -228,7 +228,8 @@ class Player(MySprite):
             self.collisions_playfield()
             if self.walldetected:
                 return
-            self.collisions_linerunners()
+            if self.collisions_linerunners():
+                return
             self.checkPlayfield()
             self.drawToPlayfield()
             self.move()
@@ -309,6 +310,8 @@ class Player(MySprite):
     def collisions_linerunners(self):
         if pygame.sprite.spritecollide(self, self.game.linerunners, False):
             self.game.setState("playerdied", "player")
+            return True
+        return False
 
     def checkPlayfield(self):
 
