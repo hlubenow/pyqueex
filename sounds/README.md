@@ -1,6 +1,6 @@
 ### Sound-Credits
 
-All sounds from `https://freesound.org`. Some were edited by me afterwards in Audacity.
+All sounds from `https://freesound.org`. Some were edited by me afterwards in Audacity to make them fit into the game.
 
 - end.wav: `Lose_C_03` by cabled_mess, licensed under CC0. 
 
