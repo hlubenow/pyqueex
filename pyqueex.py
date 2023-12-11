@@ -1119,6 +1119,8 @@ class Game:
         if self.state == "getready":
             self.player.initSettings()
             self.linerunners.initPositions()
+            self.playfield.deleteMagentaInPlayfield()
+            self.playfieldsprite.updatePlayfieldSprite()
 
         # Is called by the Player or the Opponent due to collision:
         if self.state == "playerdied":
