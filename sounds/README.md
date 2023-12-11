@@ -1,6 +1,6 @@
 ### Sound-Credits
 
-All sounds from `https://freesound.org`. Some were edited by me in Audacity:
+All sounds from `https://freesound.org`. Some were edited by me afterwards in Audacity.
 
 - end.wav: `Lose_C_03` by cabled_mess, licensed under CC0. 
 
