@@ -1135,6 +1135,7 @@ class Game:
             self.player.lives = PLAYERLIVES
             self.texts["lives"].setText(str(self.player.lives))
             self.removeLinerunnersFromGroups()
+            self.leveltwoplayed = False
             self.initLevel()
             self.playSound("start")
 
