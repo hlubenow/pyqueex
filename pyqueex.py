@@ -614,7 +614,7 @@ class PlayerExplosionGroup(pygame.sprite.Group):
     def __init__(self):
         pygame.sprite.Group.__init__(self)
 
-class WonGroup(pygame.sprite.Group):
+class CompletedGroup(pygame.sprite.Group):
 
     def __init__(self):
         pygame.sprite.Group.__init__(self)
@@ -963,7 +963,7 @@ class Game:
         self.level          = 1
         self.state          = "intro"
         self.extralifeshown = False
-        self.leveltwoplayed = False
+        self.leveltwoplayed = 0
         self.playfield = Playfield()
         self.initSprites()
         if SOUND:
@@ -1073,7 +1073,7 @@ class Game:
         self.playerexplosiongroup = PlayerExplosionGroup()
         self.playerexplosiongroup.add(self.playfieldsprite, self.player, self.infotexts)
         self.levelgroup.add(self.infotexts)
-        self.completedgroup = WonGroup()
+        self.completedgroup = CompletedGroup()
         self.completedgroup.add(self.playfieldsprite, self.texts["completed"], self.infotexts)
         self.lostgroup = LostGroup()
         self.lostgroup.add(self.playfieldsprite, self.texts["lost"],  self.texts["press_return"])
@@ -1135,7 +1135,7 @@ class Game:
             self.player.lives = PLAYERLIVES
             self.texts["lives"].setText(str(self.player.lives))
             self.removeLinerunnersFromGroups()
-            self.leveltwoplayed = False
+            self.leveltwoplayed = 0
             self.initLevel()
             self.playSound("start")
 
@@ -1175,6 +1175,7 @@ class Game:
                 self.texts["completed"].setText("Level " + str(self.level) + " Completed")
                 self.state = "completed"
                 self.playSound("levelcompleted")
+                return
 
         if self.state == "completed":
             self.counters["completed"] -= 1
@@ -1193,9 +1194,14 @@ class Game:
         if self.state == "getready":
             self.counters["getready"] -= 1
             # Play "Level Two" once at start of, well, level two:
-            if self.level == 2 and not self.leveltwoplayed and self.counters["getready"] == int(GETREADYTIME * 2 / 3):
-                self.playSound("level2")
-                self.leveltwoplayed = True
+            if self.level == 2 and self.counters["getready"] == int(GETREADYTIME * 2 / 3):
+                if self.leveltwoplayed == 0:
+                    self.playSound("level2")
+                    self.leveltwoplayed += 1
+                elif self.leveltwoplayed == 1:
+                    if random.randrange(10) < 3:
+                        self.playSound("level2")
+                        self.leveltwoplayed += 1
 
             if self.counters["getready"] <= 0:
                 self.state = "level"
