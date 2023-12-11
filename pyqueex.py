@@ -6,7 +6,7 @@ import random
 import os
 
 """
-    PyQueex 1.0 - Clone of an ancient arcade game.
+    PyQueex 1.1 - Clone of an ancient arcade game.
 
     Python-script Copyright (C) 2023 hlubenow
 
@@ -34,6 +34,8 @@ SCREENSIZE_Y      = 100
 BORDER_X          = 10
 BORDER_Y          = 5
 SCALEFACTOR       = 5
+
+SOUND             = True
 
 WINDOWPOSITION_X  = 185
 WINDOWPOSITION_Y  = 30
@@ -323,6 +325,7 @@ class Player(MySprite):
 
         # When player hits white line while drawing his line, start area-filling:
         if self.drawing and locationcolornr == COLORNRS["white"]:
+            self.game.playSound("fill")
             self.playfield.fillArea(self.opponent.getPosition())
             self.drawing = False
             self.line.setColor("white")
@@ -431,8 +434,8 @@ class Opponent(MySprite):
     def update(self):
         if self.game.state == "level":
             self.walldetected = False
-            self.collision_playfield()
             self.collision_player()
+            self.collision_playfield()
             if self.walldetected:
                 # pygame.time.wait(300)
                 return
@@ -485,6 +488,7 @@ class Opponent(MySprite):
             self.direction[0] = self.boings[tochange]
         if self.direction[1] == tochange:
             self.direction[1] = self.boings[tochange]
+        self.game.playSound("wall")
 
     def collision_player(self):
         # Collision with Player itself:
@@ -946,6 +950,8 @@ class Game:
 
     def __init__(self):
         os.environ['SDL_VIDEO_WINDOW_POS'] = str(WINDOWPOSITION_X) + ", " + str(WINDOWPOSITION_Y)
+        if SOUND:
+            pygame.mixer.pre_init(44100, -16, 1, 512)
         pygame.init()
         self.screen = pygame.display.set_mode((SCREENSIZE_X * SCALEFACTOR + 2 * BORDER_X * SCALEFACTOR, SCREENSIZE_Y * SCALEFACTOR + 2 * BORDER_Y * SCALEFACTOR))
         pygame.display.set_caption("PyQueex")
@@ -957,8 +963,11 @@ class Game:
         self.level          = 1
         self.state          = "intro"
         self.extralifeshown = False
+        self.leveltwoplayed = False
         self.playfield = Playfield()
         self.initSprites()
+        if SOUND:
+            self.initSounds()
         self.running = True
         while self.running:
             self.clocktick = self.clock.tick(FPS)
@@ -1084,6 +1093,18 @@ class Game:
         self.linerunners.initPositions()
         self.state = "getready"
 
+    def initSounds(self):
+        self.sounds = {}
+        sounddir = os.path.join(os.getcwd(), "sounds")
+        soundfilenames = ("start", "wall", "fill", "levelcompleted", "level2", "explosion", "end")
+        for i in soundfilenames:
+            self.sounds[i] = pygame.mixer.Sound(os.path.join(sounddir, i + ".mp3"))
+
+    def playSound(self, name):
+        if not SOUND:
+            return
+        self.sounds[name].play()
+
     def addLineRunner(self):
         l = LineRunner(self, self.linerunners.lrdata[self.level - 1][0], self.linerunners.lrdata[self.level - 1][1])
         self.linerunners.add(l)
@@ -1106,6 +1127,7 @@ class Game:
         # Start the game after the intro-screen:
         if self.state == "intro" and self.keyaction["return"]:
             self.initLevel()
+            self.playSound("start")
 
         # Restart the game after having lost the previous one:
         if self.state == "lost" and self.keyaction["return"]:
@@ -1114,6 +1136,7 @@ class Game:
             self.texts["lives"].setText(str(self.player.lives))
             self.removeLinerunnersFromGroups()
             self.initLevel()
+            self.playSound("start")
 
     def setState(self, state, caller):
         self.state = state
@@ -1128,12 +1151,15 @@ class Game:
         # Is called by the Player or the Opponent due to collision:
         if self.state == "playerdied":
             self.player.lives -= 1
+            if self.player.lives > 0:
+                self.playSound("explosion")
             # Game lost:
             if self.player.lives == 0:
                 self.state = "lost"
                 self.linerunners.initPositions()
                 self.playfield.initPlayfield()
                 self.playfieldsprite.updatePlayfieldSprite()
+                self.playSound("end")
                 return
             self.linerunners.initPositions()
             self.texts["lives"].setText(str(self.player.lives))
@@ -1147,6 +1173,7 @@ class Game:
             if self.playfield.getFilledPercentage() >= WINNINGPERCENTAGE:
                 self.texts["completed"].setText("Level " + str(self.level) + " Completed")
                 self.state = "completed"
+                self.playSound("levelcompleted")
 
         if self.state == "completed":
             self.counters["completed"] -= 1
@@ -1157,12 +1184,18 @@ class Game:
                     self.texts["lives"].setText(str(self.player.lives))
                     self.getreadygroup.add(self.texts["extra_life"])
                     self.extralifeshown = True
+                    self.playSound("start")
                 self.initLevel()
                 return
 
         # Happens either before the level starts, or after the Player-"explosion":
         if self.state == "getready":
             self.counters["getready"] -= 1
+            # Play "Level Two" once at start of, well, level two:
+            if self.level == 2 and not self.leveltwoplayed and self.counters["getready"] == int(GETREADYTIME * 2 / 3):
+                self.playSound("level2")
+                self.leveltwoplayed = True
+
             if self.counters["getready"] <= 0:
                 self.state = "level"
                 self.player.initSettings()
