@@ -193,7 +193,6 @@ class Player(MySprite):
         MySprite.__init__(self, game)
         self.playfield   = playfield
         self.shimmermode = 1
-        self.lives       = PLAYERLIVES
         self.colorlist   = list(COLORS["red"])
         self.createImage()
         self.collisioncolornrs = []
@@ -960,14 +959,11 @@ class Game:
         self.keyaction = {}
         self.counters = {"getready"  : GETREADYTIME,
                          "completed" : COMPLETEDTIME}
-        self.level          = 1
-        self.state          = "intro"
-        self.extralifeshown = False
-        self.leveltwoplayed = 0
         self.playfield = Playfield()
         self.initSprites()
         if SOUND:
             self.initSounds()
+        self.state   = "intro"
         self.running = True
         while self.running:
             self.clocktick = self.clock.tick(FPS)
@@ -1032,7 +1028,7 @@ class Game:
                                           "bright_white",
                                           3, 3,
                                           2)
-        self.texts["lives"]        = Text(str(self.player.lives),
+        self.texts["lives"]        = Text(str(PLAYERLIVES),
                                          "bright_white",
                                          self.texts["livestext"].spos_x + 20,
                                          self.texts["livestext"].spos_y,
@@ -1059,6 +1055,18 @@ class Game:
         self.spritegroups["playerexplosion"].add(self.playfieldsprite, self.player, self.spritegroups["infotexts"])
         self.spritegroups["completed"].add(self.playfieldsprite, self.texts["completed"], self.spritegroups["infotexts"])
         self.spritegroups["lost"].add(self.playfieldsprite, self.texts["lost"],  self.texts["press_return"])
+
+    def startGame(self):
+        # Called after the intro-screen, or when restarting the game
+        # after having lost (no intro-screen there).
+        self.level          = 1
+        self.player.lives   = PLAYERLIVES
+        self.texts["lives"].setText(str(self.player.lives))
+        self.removeLinerunnersFromGroups()
+        self.extralifeshown = False
+        self.leveltwoplayed = 0
+        self.playSound("start")
+        self.initLevel()
 
     def initLevel(self):
         self.counters["completed"] = COMPLETEDTIME
@@ -1106,20 +1114,11 @@ class Game:
         if self.keyaction["quit"]:
             self.running = False
 
-        # Start the game after the intro-screen:
-        if self.state == "intro" and self.keyaction["return"]:
-            self.initLevel()
-            self.playSound("start")
-
-        # Restart the game after having lost the previous one:
-        if self.state == "lost" and self.keyaction["return"]:
-            self.level        = 1
-            self.player.lives = PLAYERLIVES
-            self.texts["lives"].setText(str(self.player.lives))
-            self.removeLinerunnersFromGroups()
-            self.leveltwoplayed = 0
-            self.initLevel()
-            self.playSound("start")
+        # Start the game after the intro-screen, or restart it
+        # after having lost:
+        if self.state in ("intro", "lost"):
+            if self.keyaction["return"] or self.keyaction["fire"]:
+                self.startGame()
 
     def setState(self, state, caller):
         self.state = state
