@@ -41,7 +41,7 @@ WINDOWPOSITION_X  = 185
 WINDOWPOSITION_Y  = 30
 
 # Can be 0 (= no joystick), joystick number 1  or number 2:
-JOYSTICKNUMBER    = 2
+JOYSTICKNUMBER    = 1
 
 FPS               = 60
 
