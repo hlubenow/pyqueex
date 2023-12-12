@@ -41,7 +41,7 @@ WINDOWPOSITION_X  = 185
 WINDOWPOSITION_Y  = 30
 
 # Can be 0 (= no joystick), joystick number 1  or number 2:
-JOYSTICKNUMBER    = 1
+JOYSTICKNUMBER    = 2
 
 FPS               = 60
 
@@ -235,7 +235,7 @@ class Player(MySprite):
             self.checkPlayfield()
             self.drawToPlayfield()
             self.move()
-        if self.game.state in ("playerdied", "getready"):
+        if self.game.state in ("playerexplosion", "getready"):
             self.shimmer()
 
     def drawCircle(self):
@@ -275,7 +275,7 @@ class Player(MySprite):
             return
         self.shimmermode = 1
 
-        if self.game.state == "playerdied":
+        if self.game.state == "playerexplosion":
             self.game.setState("getready", "counter")
 
     def getNewPos(self):
@@ -311,7 +311,7 @@ class Player(MySprite):
 
     def collisions_linerunners(self):
         if pygame.sprite.spritecollide(self, self.game.linerunners, False):
-            self.game.setState("playerdied", "player")
+            self.game.setState("playerexplosion", "player")
             return True
         return False
 
@@ -495,7 +495,7 @@ class Opponent(MySprite):
         if self.rect.colliderect(self.player.rect):
             # Don't kill the Player, while he's on a white line:
             if not self.player.onWhiteLine():
-                self.game.setState("playerdied", "opponent")
+                self.game.setState("playerexplosion", "opponent")
                 return
         # Collision with Player's magenta line.
         # "return", in order not to drain more than one life from the Player:
@@ -503,7 +503,7 @@ class Opponent(MySprite):
             for x in range(OPPONENTSIZE_X):
                 # Collision with Player's magenta line:
                 if self.playfield.playfield[self.spos_y + y][self.spos_x + x] == COLORNRS["magenta"]:
-                    self.game.setState("playerdied", "opponent")
+                    self.game.setState("playerexplosion", "opponent")
                     return
 
     def createImage(self):
@@ -974,37 +974,20 @@ class Game:
             self.checkKeys()
             self.screen.fill(COLORS["grey"])
             self.checkGameState()
-            # Not much to see here:
-            if self.state == "intro":
-                self.introgroup.update()
-                self.introgroup.draw(self.screen)
-            if self.state == "getready":
-                self.getreadygroup.update()
-                self.getreadygroup.draw(self.screen)
-            if self.state == "level":
-                self.levelgroup.update()
-                self.levelgroup.draw(self.screen)
-            if self.state == "playerdied":
-                self.playerexplosiongroup.update()
-                self.playerexplosiongroup.draw(self.screen)
-            if self.state == "completed":
-                self.completedgroup.update()
-                self.completedgroup.draw(self.screen)
-            if self.state == "lost":
-                self.lostgroup.update()
-                self.lostgroup.draw(self.screen)
+
+            self.spritegroups[self.state].update()
+            self.spritegroups[self.state].draw(self.screen)
+
             pygame.display.flip()
         pygame.quit()
 
     def initSprites(self):
-        self.playfieldsprite = PlayfieldSprite(self, self.playfield)
-        self.player          = Player(self, self.playfield)
-        self.opponent        = Opponent(self, self.playfield, self.player)
-        self.levelgroup      = LevelGroup()
-        self.levelgroup.add(self.playfieldsprite, self.player, self.opponent)
+        # Create sprites:
+        self.playfieldsprite      = PlayfieldSprite(self, self.playfield)
+        self.player               = Player(self, self.playfield)
+        self.opponent             = Opponent(self, self.playfield, self.player)
         self.player.setOpponent(self.opponent)
-        self.linerunners     = LineRunnersGroup()
-        self.texts = {}
+        self.texts                = {}
         self.texts["intro"]       = Text("PyQueex",
                                          "bright_white",
                                          60, 15,
@@ -1025,58 +1008,57 @@ class Game:
                                           "white",
                                           15, 80,
                                           2)
-        self.texts["gr_level"]    = Text("Level 999",
-                                         "cyan",
-                                         65, 10,
-                                         3)
-        self.texts["getready"]    = Text("GET READY",
-                                         "bright_white",
-                                         60, 20,
-                                         3)
-        self.texts["completed"]         = Text("Level 900 Completed",
-                                         "bright_white",
-                                         40, 20,
-                                         3)
-        self.texts["lost"]        = Text("GAME OVER",
-                                         "bright_white",
-                                         60, 35,
-                                         3)
+        self.texts["gr_level"]     = Text("Level 999",
+                                          "cyan",
+                                          65, 10,
+                                          3)
+        self.texts["getready"]     = Text("GET READY",
+                                          "bright_white",
+                                          60, 20,
+                                          3)
+        self.texts["completed"]    = Text("Level 900 Completed",
+                                          "bright_white",
+                                          40, 20,
+                                          3)
+        self.texts["lost"]         = Text("GAME OVER",
+                                          "bright_white",
+                                          60, 35,
+                                          3)
         self.texts["press_return"] = Text("Press \"Return\" to play again.",
                                           "bright_white",
                                           36, 50,
                                           2)
-        self.texts["livestext"]   = Text("Lives: ",
-                                         "bright_white",
-                                         3,
-                                         3,
-                                         2)
-        self.texts["lives"]       = Text(str(self.player.lives),
+        self.texts["livestext"]    = Text("Lives: ",
+                                          "bright_white",
+                                          3, 3,
+                                          2)
+        self.texts["lives"]        = Text(str(self.player.lives),
                                          "bright_white",
                                          self.texts["livestext"].spos_x + 20,
                                          self.texts["livestext"].spos_y,
                                          self.texts["livestext"].scalefactor)
-        self.texts["percentage"]  = Text(" 0%",
-                                         "bright_white",
-                                         SCREENSIZE_X - 12,
-                                         3,
-                                         2)
-        self.texts["extra_life"]  = Text("Extra Life!",
-                                         "cyan",
-                                         65, 40,
-                                         2)
-        self.infotexts = InfoTextsGroup()
-        self.infotexts.add(self.texts["livestext"], self.texts["lives"], self.texts["percentage"])
-        self.introgroup = LostGroup()
-        self.introgroup.add(self.playfieldsprite, self.texts["intro"], self.texts["intro_story"], self.texts["intro_return"], self.texts["intro_author"])
-        self.getreadygroup = GetReadyGroup()
-        self.getreadygroup.add(self.playfieldsprite, self.player, self.opponent, self.texts["gr_level"], self.texts["getready"], self.infotexts)
-        self.playerexplosiongroup = PlayerExplosionGroup()
-        self.playerexplosiongroup.add(self.playfieldsprite, self.player, self.infotexts)
-        self.levelgroup.add(self.infotexts)
-        self.completedgroup = CompletedGroup()
-        self.completedgroup.add(self.playfieldsprite, self.texts["completed"], self.infotexts)
-        self.lostgroup = LostGroup()
-        self.lostgroup.add(self.playfieldsprite, self.texts["lost"],  self.texts["press_return"])
+        self.texts["percentage"]   = Text(" 0%",
+                                          "bright_white",
+                                          SCREENSIZE_X - 12, 3,
+                                          2)
+        self.texts["extra_life"]   = Text("Extra Life!",
+                                          "cyan",
+                                          65, 40,
+                                          2)
+        # Create groups:
+        self.spritegroups = {}
+        for i in ("intro", "getready", "level", "playerexplosion", "completed", "lost", "infotexts"):
+            self.spritegroups[i] = pygame.sprite.Group()
+        self.linerunners = LineRunnersGroup()
+
+        # Put sprites in groups:
+        self.spritegroups["infotexts"].add(self.texts["livestext"], self.texts["lives"], self.texts["percentage"])
+        self.spritegroups["intro"].add(self.playfieldsprite, self.texts["intro"], self.texts["intro_story"], self.texts["intro_return"], self.texts["intro_author"])
+        self.spritegroups["getready"].add(self.playfieldsprite, self.player, self.opponent, self.texts["gr_level"], self.texts["getready"], self.spritegroups["infotexts"])
+        self.spritegroups["level"].add(self.playfieldsprite, self.player, self.opponent, self.spritegroups["infotexts"])
+        self.spritegroups["playerexplosion"].add(self.playfieldsprite, self.player, self.spritegroups["infotexts"])
+        self.spritegroups["completed"].add(self.playfieldsprite, self.texts["completed"], self.spritegroups["infotexts"])
+        self.spritegroups["lost"].add(self.playfieldsprite, self.texts["lost"],  self.texts["press_return"])
 
     def initLevel(self):
         self.counters["completed"] = COMPLETEDTIME
@@ -1108,15 +1090,15 @@ class Game:
     def addLineRunner(self):
         l = LineRunner(self, self.linerunners.lrdata[self.level - 1][0], self.linerunners.lrdata[self.level - 1][1])
         self.linerunners.add(l)
-        self.levelgroup.add(l)
-        self.getreadygroup.add(l)
-        self.playerexplosiongroup.add(l)
+        self.spritegroups["level"].add(l)
+        self.spritegroups["getready"].add(l)
+        self.spritegroups["playerexplosion"].add(l)
 
     def removeLinerunnersFromGroups(self):
         for l in self.linerunners.sprites():
-            self.levelgroup.remove(l)
-            self.getreadygroup.remove(l)
-            self.playerexplosiongroup.remove(l)
+            self.spritegroups["level"].remove(l)
+            self.spritegroups["getready"].remove(l)
+            self.spritegroups["playerexplosion"].remove(l)
             self.linerunners.remove(l)
 
     def checkKeys(self):
@@ -1150,7 +1132,7 @@ class Game:
             self.playfieldsprite.updatePlayfieldSprite()
 
         # Is called by the Player or the Opponent due to collision:
-        if self.state == "playerdied":
+        if self.state == "playerexplosion":
             self.player.lives -= 1
             if self.player.lives > 0:
                 self.playSound("explosion")
@@ -1184,7 +1166,7 @@ class Game:
                 if self.level % EXTRALIFELEVEL == 0:
                     self.player.lives += 1
                     self.texts["lives"].setText(str(self.player.lives))
-                    self.getreadygroup.add(self.texts["extra_life"])
+                    self.spritegroups["getready"].add(self.texts["extra_life"])
                     self.extralifeshown = True
                     self.playSound("start")
                 self.initLevel()
@@ -1208,7 +1190,7 @@ class Game:
                 self.player.initSettings()
                 self.texts["lives"].setText(str(self.player.lives))
                 if self.extralifeshown:
-                    self.getreadygroup.remove(self.texts["extra_life"])
+                    self.spritegroups["getready"].remove(self.texts["extra_life"])
                     self.extralifeshown = False
                 self.counters["getready"] = GETREADYTIME
 
