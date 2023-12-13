@@ -6,7 +6,7 @@ import random
 import os
 
 """
-    PyQueex 1.1 - Clone of an ancient arcade game.
+    PyQueex 1.2 - Clone of an ancient arcade game.
 
     Python-script Copyright (C) 2023 hlubenow
 
@@ -49,6 +49,7 @@ WINNINGPERCENTAGE = 80
 
 GETREADYTIME      = 180
 COMPLETEDTIME     = 360
+GAMEOVERTIME      = 240
 
 PLAYERLIVES       = 3
 
@@ -275,7 +276,10 @@ class Player(MySprite):
         self.shimmermode = 1
 
         if self.game.state == "playerexplosion":
-            self.game.setState("getready", "counter")
+            if self.lives > 0:
+                self.game.setState("getready", "counter")
+            else:
+                self.game.gameOver()
 
     def getNewPos(self):
         self.newpos = [self.spos_x, self.spos_y]
@@ -958,7 +962,8 @@ class Game:
         self.ih = InputHandler()
         self.keyaction = {}
         self.counters = {"getready"  : GETREADYTIME,
-                         "completed" : COMPLETEDTIME}
+                         "completed" : COMPLETEDTIME,
+                         "gameover"  : GAMEOVERTIME}
         self.playfield = Playfield()
         self.initSprites()
         if SOUND:
@@ -1054,7 +1059,7 @@ class Game:
         self.spritegroups["level"].add(self.playfieldsprite, self.player, self.opponent, self.spritegroups["infotexts"])
         self.spritegroups["playerexplosion"].add(self.playfieldsprite, self.player, self.spritegroups["infotexts"])
         self.spritegroups["completed"].add(self.playfieldsprite, self.texts["completed"], self.spritegroups["infotexts"])
-        self.spritegroups["lost"].add(self.playfieldsprite, self.texts["lost"],  self.texts["press_return"])
+        self.spritegroups["lost"].add(self.playfieldsprite, self.texts["lost"])
 
     def startGame(self):
         # Called after the intro-screen, or when restarting the game
@@ -1133,16 +1138,7 @@ class Game:
         # Is called by the Player or the Opponent due to collision:
         if self.state == "playerexplosion":
             self.player.lives -= 1
-            if self.player.lives > 0:
-                self.playSound("explosion")
-            # Game lost:
-            if self.player.lives == 0:
-                self.state = "lost"
-                self.linerunners.initPositions()
-                self.playfield.initPlayfield()
-                self.playfieldsprite.updatePlayfieldSprite()
-                self.playSound("end")
-                return
+            self.playSound("explosion")
             self.linerunners.initPositions()
             self.texts["lives"].setText(str(self.player.lives))
             self.playfield.deleteMagentaInPlayfield()
@@ -1192,5 +1188,18 @@ class Game:
                     self.spritegroups["getready"].remove(self.texts["extra_life"])
                     self.extralifeshown = False
                 self.counters["getready"] = GETREADYTIME
+            return
+
+        if self.state == "lost":
+            self.counters["gameover"] -= 1
+            if self.counters["gameover"] <= 0:
+                self.setState("intro", "counter")
+
+    def gameOver(self):
+        self.state = "lost"
+        self.linerunners.initPositions()
+        self.playfield.initPlayfield()
+        self.playfieldsprite.updatePlayfieldSprite()
+        self.playSound("end")
 
 Game()
