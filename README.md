@@ -1,4 +1,4 @@
-### PyQueex 1.1
+### PyQueex 1.2
 
 Clone of an ancient arcade game in Pygame.
 
