@@ -1065,7 +1065,8 @@ class Game:
         # Called after the intro-screen, or when restarting the game
         # after having lost (no intro-screen there).
         self.level          = 1
-        self.player.lives   = PLAYERLIVES
+        self.counters["gameover"] = GAMEOVERTIME
+        self.player.lives         = PLAYERLIVES
         self.texts["lives"].setText(str(self.player.lives))
         self.removeLinerunnersFromGroups()
         self.extralifeshown = False
